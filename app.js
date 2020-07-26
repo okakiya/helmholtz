@@ -89,15 +89,6 @@ const client = new textToSpeech.TextToSpeechClient({
       return;
     }
 
-    const text = message
-        .content
-        .replace(/https?:\/\/\S+/g, '')
-        .replace(/<a?:.*?:\d+>/g, '')   // カスタム絵文字を除去
-        .slice(0, 50);
-
-    // テキストが空なら何もしない
-    if(!text) { return; }
-
     // 誰もいなかったら参加しない
     if(channel.members.array().length < 1) { return; }
 
@@ -107,7 +98,23 @@ const client = new textToSpeech.TextToSpeechClient({
     const shouldMove = !currentConnection || currentConnection.channel.id !== channel.id;
     const conn = shouldMove ? await channel.join() : currentConnection;
 
-    conn.play(await textToSpeechReadableStream(text), {highWaterMark: 6, bitrate: 'auto'});
+    // 特定のカスタム絵文字の発言を取得
+    const customEmoji = message.content.match(/^<a?:(.+?):\d+>$/);
+    if (customEmoji) {
+      const path = './voice/' + customEmoji[1] + '.mp3';
+      conn.play(path, { highWaterMark: 6, bitrate: 'auto' });
+    } else {
+      const text = message
+        .content
+        .replace(/https?:\/\/\S+/g, '')
+        .replace(/<a?:.*?:\d+>/g, '')   // カスタム絵文字を除去
+        .slice(0, 50);
+
+      // テキストが空なら何もしない
+      if(!text) { return; }
+      conn.play(await textToSpeechReadableStream(text), {highWaterMark: 6, bitrate: 'auto'});
+    }
+
   });
 
   discordClient.once('ready', () => {
