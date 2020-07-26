@@ -54,3 +54,8 @@ export GOOGLE_CLIENT_EMAIL="serviceaccount@mail.com"
 export GOOGLE_PRIVATE_KEY=$'privkey'
 node app.js
 ```
+
+## カスタム絵文字に対応した音声を流す
+1. voiceディレクトリ配下に任意のmp3ファイルを配置する。（カスタム絵文字の仕様上、ファイル名は英数字のみ25文字まで推奨）
+2. Discordの絵文字設定で、ファイル名と同一（`.mp3`を除く）の絵文字を登録する。
+3. マイクミュート時にカスタム絵文字のみを投稿すると、それに対応した音声を出力する。
