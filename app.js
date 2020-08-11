@@ -81,9 +81,32 @@ const client = new textToSpeech.TextToSpeechClient({
     const guild = message.guild;
     const channel = message.member.voice.channel;
 
-    // ミュートの人の特定テキストチャンネルの発言だけ拾う
+    // 発言者の参加チャンネルが、
+    // 今のヘルムホルツ参加チャンネルと違うなら移動する
+    async function getConn() {
+      const currentConnection = discordClient.voice.connections.get(DISCORD_GUILD_ID);
+      const shouldMove = !currentConnection || currentConnection.channel.id !== channel.id;
+      const conn = shouldMove ? await channel.join() : currentConnection;
+      return conn;
+    }
+
+    async function customEmojiToVoice(emojiName) {
+      const conn = await getConn();
+      const path = './voice/' + emojiName + '.mp3';
+      conn.play(path, { highWaterMark: 6, bitrate: 'auto' });
+    }
+
+    async function textToVoice(text) {
+      // テキストが空なら何もしない
+      if(!text) { return; }
+
+      const conn = await getConn();
+      conn.play(await textToSpeechReadableStream(text), {highWaterMark: 6, bitrate: 'auto'});
+    }
+
+    // 特定テキストチャンネルの発言だけ拾う
     if(
-      !message.member.voice.selfMute || guild.id !== DISCORD_GUILD_ID || 
+      guild.id !== DISCORD_GUILD_ID ||
       !channel || message.channel.id !== DISCORD_SOURCE_CHANNEL_ID
     ) {
       return;
@@ -92,27 +115,21 @@ const client = new textToSpeech.TextToSpeechClient({
     // 誰もいなかったら参加しない
     if(channel.members.array().length < 1) { return; }
 
-    // 発言者の参加チャンネルが、
-    // 今のヘルムホルツ参加チャンネルと違うなら移動する
-    const currentConnection = discordClient.voice.connections.get(DISCORD_GUILD_ID);
-    const shouldMove = !currentConnection || currentConnection.channel.id !== channel.id;
-    const conn = shouldMove ? await channel.join() : currentConnection;
-
-    // 特定のカスタム絵文字の発言を取得
+    // 特定のカスタム絵文字のみの発言を取得
     const customEmoji = message.content.match(/^<a?:(.+?):\d+>$/);
     if (customEmoji) {
-      const path = './voice/' + customEmoji[1] + '.mp3';
-      conn.play(path, { highWaterMark: 6, bitrate: 'auto' });
+      customEmojiToVoice(customEmoji[1]);
     } else {
+      // ミュートの人の発言だけ拾う
+      if (!message.member.voice.selfMute) {
+        return;
+      }
       const text = message
         .content
         .replace(/https?:\/\/\S+/g, '')
         .replace(/<a?:.*?:\d+>/g, '')   // カスタム絵文字を除去
         .slice(0, 50);
-
-      // テキストが空なら何もしない
-      if(!text) { return; }
-      conn.play(await textToSpeechReadableStream(text), {highWaterMark: 6, bitrate: 'auto'});
+      textToVoice(text);
     }
 
   });
